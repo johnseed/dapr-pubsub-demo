@@ -20,6 +20,7 @@ services:
     volumes:
       - "./dapr/:/dapr/"
     network_mode: "service:pub"
+    restart: unless-stopped
 
   sub-api:
     image: "sub-api"
@@ -41,6 +42,7 @@ services:
     volumes:
       - "./dapr/:/dapr/"
     network_mode: "service:sub-api"
+    restart: unless-stopped
 
   zipkin:
         image: "openzipkin/zipkin:latest"
@@ -80,6 +82,7 @@ services:
 
   kafka:
     image: wurstmeister/kafka
+    container_name: kafka
     ports:
       - 9092:9092
     environment:

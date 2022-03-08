@@ -15,12 +15,13 @@ Console.WriteLine("Hello, World!");
 // Pubsub
 string PUBSUB_NAME = "order_pub_sub";
 string TOPIC_NAME = "orders";
+Random random = new Random();
+
 while (true)
 {
     try
     {
         System.Threading.Thread.Sleep(5000);
-        Random random = new Random();
         int orderId = random.Next(1, 1000);
         CancellationTokenSource source = new CancellationTokenSource();
         CancellationToken cancellationToken = source.Token;
