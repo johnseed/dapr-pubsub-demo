@@ -1,0 +1,139 @@
+version: '3.4'
+
+services:
+  pub:
+    image: "pub"
+    container_name: pub
+    build:
+      context: Pub
+    depends_on:
+      - sub-api
+      - kafka
+  pub-dapr:
+    image: "daprio/daprd:latest"
+    container_name: pub-dapr
+    command: [ "./daprd", "-app-id", "orderprocessing", "--dapr-http-max-request-size", "99999999999", "-components-path", "/dapr/components", "-config", "/dapr/config.yaml"]
+    depends_on:
+      - pub
+      - redis
+      - zipkin
+    volumes:
+      - "./dapr/:/dapr/"
+    network_mode: "service:pub"
+
+  sub-api:
+    image: "sub-api"
+    container_name: sub
+    build:
+      context: Sub.API
+      dockerfile: Dockerfile
+    ports:
+      - 8087:80
+    depends_on:
+      - kafka
+  sub-api-dapr:
+    image: "daprio/daprd:latest"
+    container_name: sub-dapr
+    command: [ "./daprd", "-app-id", "checkout", "-app-port", "80", "--dapr-http-max-request-size", "99999999999", "-components-path", "/dapr/components", "-config", "/dapr/config.yaml"]
+    depends_on:
+      - redis
+      - zipkin
+    volumes:
+      - "./dapr/:/dapr/"
+    network_mode: "service:sub-api"
+
+  zipkin:
+        image: "openzipkin/zipkin:latest"
+        container_name: zipkin
+        ports:
+          - "9411:9411"
+  seq:
+        image: "datalust/seq:2021.3.6651"
+        container_name: seq2
+        ports:
+            - "5341:80"
+        environment:
+            ACCEPT_EULA: Y
+  redis:
+        image: "redis:alpine"
+        container_name: redis
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - 5672:5672        
+      - 15672:15672        
+
+  zookeeper:
+    image: zookeeper
+    ports:
+      - "2181:2181"
+    restart: unless-stopped
+
+# Manual-built kafka
+
+  # kafka:
+  #   image: kafka
+  #   ports:
+  #     - 9092:9092
+
+
+  kafka:
+    image: wurstmeister/kafka
+    ports:
+      - 9092:9092
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: kafka
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "orders:1:1"
+    # volumes:
+    #   - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+
+
+# wurstmeister/kafka detailed config
+
+  # kafka:
+  #   image: wurstmeister/kafka
+  #   container_name: kafka
+  #   ports:
+  #     - "9092:9092"
+  #   expose:
+  #     - "9093"
+  #   environment:
+  #     KAFKA_LISTENERS: DOCKER_NET://0.0.0.0:9093,HOST_NET://0.0.0.0:9092
+  #     KAFKA_ADVERTISED_LISTENERS: DOCKER_NET://kafka:9093,HOST_NET://localhost:9092
+  #     KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: DOCKER_NET:PLAINTEXT,HOST_NET:PLAINTEXT
+  #     KAFKA_INTER_BROKER_LISTENER_NAME: DOCKER_NET
+  #     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+  #     # Create Kafka topics "NAME:PARTITION:REPLICAS,..."
+  #     KAFKA_CREATE_TOPICS: "orders:1:1,topic-macos:1:1"
+
+
+# bitnami kafka
+
+#   zookeeper:
+#     image: docker.io/bitnami/zookeeper:3.7
+#     ports:
+#       - "2181:2181"
+#     volumes:
+#       - "zookeeper_data:/bitnami"
+#     environment:
+#       - ALLOW_ANONYMOUS_LOGIN=yes
+#   kafka:
+#     image: docker.io/bitnami/kafka:3
+#     ports:
+#       - "9092:9092"
+#     volumes:
+#       - "kafka_data:/bitnami"
+#     environment:
+#       - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+#       - ALLOW_PLAINTEXT_LISTENER=yes
+#     depends_on:
+#       - zookeeper
+
+# volumes:
+#   zookeeper_data:
+#     driver: local
+#   kafka_data:
+#     driver: local
