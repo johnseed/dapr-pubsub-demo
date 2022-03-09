@@ -12,6 +12,8 @@ spec:
     value: "none"
   - name: authRequired
     value: "false"
+  - name: disableTls
+    value: "true"
 scopes:
   - orderprocessing
   - checkout
